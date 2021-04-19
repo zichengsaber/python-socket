@@ -158,6 +158,16 @@ class ClientHandler():
         # 接受
         data=self.sock.recv(1024).decode("utf8")
 
+        if data=='no such dir':
+            print("No such directory")
+        elif data=="this is the top dir!": 
+            print("This is the top directory")
+        else:
+            print(os.path.basename(data))
+            self.current_dir=os.path.basename(data)
+    # 返回当前路径
+    def pwd(self,*cmd_list):
+        pass
 
 
     """

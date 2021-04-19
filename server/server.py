@@ -128,7 +128,31 @@ class ServerHandler(socketserver.BaseRequestHandler):
             file_str="<empty dir>"
         self.request.sendall(file_str.encode("utf8"))
 
-                        
+    def cd(self,**data):
+        dirname=data.get('dirname')
+        topdirname=os.path.join(cfg.BASE_DIR,"home") 
+
+        if dirname=='~':
+            self.rootPath=topdirname
+        elif dirname=="..": # 上一级目录
+            if self.rootPath!=topdirname:
+                self.rootPath=os.path.dirname(self.rootPath)
+            else:
+                self.request.sendall("this is the top dir!".encode("utf8"))
+                return 
+        elif dirname==".": # 当前目录
+            self.request.sendall(self.rootPath.encode("utf8"))
+            return
+        else:
+            back=self.rootPath
+            self.rootPath=os.path.join(self.rootPath,dirname)
+            if not os.path.isdir(self.rootPath):
+                self.rootPath=back
+        
+        self.request.sendall(self.rootPath.encode("utf8"))
+        return 
+
+                     
 
     def quit(self,**data): # 客户端对出ftp服务器
         info=self.user+" is quit!"
