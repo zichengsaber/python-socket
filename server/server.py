@@ -152,6 +152,9 @@ class ServerHandler(socketserver.BaseRequestHandler):
         self.request.sendall(self.rootPath.encode("utf8"))
         return 
 
+    def pwd(self,**data):
+        self.request.sendall(self.rootPath.encode("utf8"))
+
                      
 
     def quit(self,**data): # 客户端对出ftp服务器

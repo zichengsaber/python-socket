@@ -167,8 +167,14 @@ class ClientHandler():
             self.current_dir=os.path.basename(data)
     # 返回当前路径
     def pwd(self,*cmd_list):
-        pass
+        data={
+            "action":"pwd" 
+        }
 
+        self.sock.sendall(json.dumps(data).encode("utf-8"))
+
+        recv_data=self.sock.recv(1024).decode("utf-8")
+        print(recv_data)
 
     """
     client 端退出
