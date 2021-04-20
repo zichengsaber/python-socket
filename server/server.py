@@ -155,7 +155,33 @@ class ServerHandler(socketserver.BaseRequestHandler):
     def pwd(self,**data):
         self.request.sendall(self.rootPath.encode("utf8"))
 
-                     
+    def mkdir(self,**data):
+        dirname=data["dirname"]
+        path=os.path.join(self.rootPath,dirname)
+        if not os.path.exists(path): # 创建
+            if "/" in dirname:
+                os.makedirs(path)
+            else:
+                os.mkdir(path)
+            self.request.sendall("create directory successfully!".encode("utf8"))
+        else:
+            self.request.sendall("dirname exist".encode("utf-8"))
+        
+    def rm(self,**data):
+        file_name=data["file_name"]
+        path=os.path.join(self.rootPath,file_name)
+        if not os.path.exists(path):
+            print("no such file")
+            self.request.sendall("no such file".encode("utf-8"))
+        else:
+            try:
+                shutil.rmtree(path) # 递归删除
+            except:
+                os.remove(path) 
+            print("delete over!!")
+            str_info="remove "+file_name+" success!!!"
+            self.request.sendall(str_info.encode('utf-8'))
+                  
 
     def quit(self,**data): # 客户端对出ftp服务器
         info=self.user+" is quit!"

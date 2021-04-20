@@ -175,7 +175,31 @@ class ClientHandler():
 
         recv_data=self.sock.recv(1024).decode("utf-8")
         print(recv_data)
+    
+    def mkdir(self,*cmd_list):
+        if len(cmd_list)==1:
+            print("error format")
+            return 
+        data={
+            "action":"mkdir",
+            "dirname":cmd_list[1]
+        }
 
+        self.sock.sendall(json.dumps(data).encode("utf-8"))
+        recv_data=self.sock.recv(1024).decode("utf-8")
+        print(recv_data)
+    
+    def rm(self,*cmd_list):
+        if len(cmd_list)==1:
+            print("error format")
+            return
+        data={
+            "action":"rm",
+            "file_name":cmd_list[1]
+        }
+        self.sock.sendall(json.dumps(data).encode("utf-8"))
+        recv_data=self.sock.recv(1024).decode("utf-8")
+        print(recv_data)
     """
     client 端退出
     """
@@ -187,6 +211,20 @@ class ClientHandler():
         self.sock.close()
         exit(0)
     
+    """
+    帮助列表
+    """
+    def help(self,*cmd_list):
+        print("------------------------------------")
+        print("ls: to list the dir")
+        print("cd: to open the dir")
+        print("mkdir: to create a dir")
+        print("chat: to chat with others")
+        print("put: to upload things to server")
+        print("get: to download things from server")
+        print("quit: to quit the FTP")
+        print("help: to show this list")
+        print("------------------------------------")
         
 
 
