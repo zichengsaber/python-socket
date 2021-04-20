@@ -46,8 +46,8 @@ class ServerHandler(socketserver.BaseRequestHandler):
                 data=json.loads(data.decode('utf8'))
                 """
                 {"action":"auth",
-                "usename":"yuan"
-                "pwd":123
+                "usename":"zzc"
+                "pwd":123456
                 }
                 """
                 if data.get("action"):

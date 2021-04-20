@@ -5,6 +5,8 @@ import os
 import sys 
 import time
 import threading 
+from ui import ChatUI
+from curses import wrapper
 
 STATUS_CODE = {
     250: "Invalid cmd format, e.g: {'action':'get','filename':'test.py','size':344}",
@@ -101,19 +103,26 @@ class ClientHandler():
             print(STATUS_CODE[response["status_code"]]) # "Wrong username or password"
     # 多人聊天的方式
     # 主要要解决的问题是
-    def chat(self,*cmd_list): # 聊天
+    def chat_helper(self,stdscr,*cmd_list): # 聊天
         data={
             "action":"chat",
         }
         self.sock.send(json.dumps(data).encode("utf8"))
         print("welcome to chat room!")
         print("input q to quit the chatroom")
-        
-        t1=threading.Thread(target=self.recvmsg)
+        # 如何在线程中加入参数
+        # 加入ui参数
+        stdscr.clear()
+        ui = ChatUI(stdscr)
+        ui.userlist.append(self.username)
+        ui.redraw_userlist()
+        # 尝试加入ui参数
+        t1=threading.Thread(target=self.recvmsg,args=(ui,))
         t1.start()
         while True:
             # 输出有一点小问题主要是抢占
-            msg = input().strip()
+            msg = ui.wait_input()
+            ui.chatbuffer_add(self.username+":"+msg)
             # msg=input("{}:".format(self.username)).strip()
             if len(msg) == 0:
                 continue
@@ -122,15 +131,18 @@ class ClientHandler():
                 time.sleep(1)
                 return
             self.sock.sendall(msg.encode("utf8"))
+    def chat(self,*cmd_list):
+        wrapper(self.chat_helper,*cmd_list)
 
     # 接收线程     
-    def recvmsg(self):
+    def recvmsg(self,ui):
         while True:
             info = self.sock.recv(1024).strip()
             info=json.loads(info.decode("utf8"))
             user_r=info.get("user")
             reply=info.get("msg")
-            print(user_r+":"+reply)
+            # print(user_r+":"+reply)
+            ui.chatbuffer_add(user_r+":"+reply)
             if reply=="quit the chatroom":
                 break
     """
@@ -225,6 +237,19 @@ class ClientHandler():
         print("quit: to quit the FTP")
         print("help: to show this list")
         print("------------------------------------")
+        
+    def put(self,*cmd_list):
+        if len(cmd_list)==1:
+            print("error format!")
+            return 
+        elif len(cmd_list)==2: # 直接上传到服务器的源文件夹 put example
+            action,local_path=cmd_list
+            target_path=""
+        else:
+            action,local_path,target_path=cmd_list
+        
+        local_path=os.path.join(self.rootPath,local_path)
+
         
 
 
