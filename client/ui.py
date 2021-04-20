@@ -1,5 +1,5 @@
 import curses
-
+# 参考了此处的设计 https://github.com/calzoneman/python-chatui
 class ChatUI:
     def __init__(self, stdscr, userlist_width=16):
         curses.use_default_colors()

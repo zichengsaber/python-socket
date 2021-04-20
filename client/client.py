@@ -7,7 +7,8 @@ import time
 import threading 
 from ui import ChatUI
 from curses import wrapper
-
+from tqdm import tqdm
+import time 
 STATUS_CODE = {
     250: "Invalid cmd format, e.g: {'action':'get','filename':'test.py','size':344}",
     251: "Invalid cmd ",
@@ -131,6 +132,7 @@ class ClientHandler():
                 time.sleep(1)
                 return
             self.sock.sendall(msg.encode("utf8"))
+    
     def chat(self,*cmd_list):
         wrapper(self.chat_helper,*cmd_list)
 
@@ -232,25 +234,87 @@ class ClientHandler():
         print("cd: to open the dir")
         print("mkdir: to create a dir")
         print("chat: to chat with others")
-        print("put: to upload things to server")
-        print("get: to download things from server")
+        print("push: to upload things to server")
+        print("pull: to download things from server")
         print("quit: to quit the FTP")
         print("help: to show this list")
         print("------------------------------------")
         
-    def put(self,*cmd_list):
+    def push(self,*cmd_list):
         if len(cmd_list)==1:
             print("error format!")
             return 
-        elif len(cmd_list)==2: # 直接上传到服务器的源文件夹 put example
+        elif len(cmd_list)==2: # 直接上传到服务器的源文件夹 push example
             action,local_path=cmd_list
             target_path=""
         else:
             action,local_path,target_path=cmd_list
         
         local_path=os.path.join(self.rootPath,local_path)
-
         
+        if not os.path.exists(local_path):
+            data={
+                "action":"push",
+                "file_name":"no such file",
+                "file_size": 0,
+                "target_path": target_path
+            }
+            print("no such file")
+            self.sock.send(json.dumps(data).encode("utf-8"))
+            return 
+        # 获取文件名称以及大小
+        file_name=os.path.basename(local_path) 
+        file_size=os.stat(local_path).st_size
+
+        data={
+            "action":"push",
+            "file_name":file_name,
+            "file_size":file_size,
+            "target_path": target_path
+        }
+
+        self.sock.send(json.dumps(data).encode("utf-8"))
+
+        # 是否存在
+        is_dir_exist=self.sock.recv(1024).decode("utf-8")
+
+        if is_dir_exist=="no such dir":
+            print("no such dir!")
+            return 
+
+        is_exist=self.sock.recv(1024).decode("utf-8")
+
+        has_sent=0
+        if is_exist=="800": # 文件不完整
+            choice = input("the file exist,but not enough,is continue?[Y/N]").strip()
+            if choice.upper()=="Y":
+                self.sock.sendall("Y".encode("utf-8"))
+                continue_position = self.sock.recv(1024).decode("utf8")
+                has_sent=int(continue_position)
+            else:
+                self.sock.sendall("N".encode("utf-8"))
+        elif is_exist=="801":
+            print("the file exist")
+            return 
+        # 只读模式打开文件
+        # num=(file_size-has_sent)//1024+1
+        with open(local_path,"rb") as f:
+            # 显示进度
+            with tqdm(total=file_size,desc="push") as t:
+                while has_sent < file_size:
+                    data=f.read(1024)
+                    self.sock.sendall(data)
+                    has_sent+=len(data)
+                    t.update(1024)
+                    time.sleep(0.01)
+                
+        
+        if has_sent==file_size:
+            print("push success")
+            return
+
+
+
 
 
 if __name__=='__main__':

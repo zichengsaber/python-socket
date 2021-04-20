@@ -2,8 +2,16 @@
 
 > zichengsaber
 
-## 实现一个简单的聊天程序
+## 实现一个简单的聊天/文件传输程序(C/S)
 
+### 展示
+
+聊天展示
+![](./img/lmg.png)
+![](./img/zzc.png)
+
+文件上传
+![](./img/push.png)
 ### 用法
 在server文件夹下直接运行`server.py`使用默认的`ip`和`port`
 
@@ -33,11 +41,12 @@ ls: to list the dir
 cd: to open the dir
 mkdir: to create a dir
 chat: to chat with others
-put: to upload things to server
-get: to download things from server
+push: to upload things to server
+pull: to download things from server
 quit: to quit the FTP
 help: to show this list
 ------------------------------------
 ```
+
 
 

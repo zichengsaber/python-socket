@@ -1,6 +1,5 @@
 import socketserver
 import json
-import configparser
 import os 
 import sys 
 import shutil
@@ -181,7 +180,64 @@ class ServerHandler(socketserver.BaseRequestHandler):
             print("delete over!!")
             str_info="remove "+file_name+" success!!!"
             self.request.sendall(str_info.encode('utf-8'))
-                  
+
+
+    def push(self,**data):
+        print("data",data)
+        file_name=data.get("file_name")       # 获取客户上传文件的名称，大小和目标地址
+        file_size=data.get("file_size")
+        target_path=data.get("target_path")
+
+        if file_name=="no such file":
+            print("no such file!")
+            return
+
+        if len(target_path)==0:
+            abs_path=os.path.join(self.rootPath,file_name)
+        else:
+            abs_path=os.path.join(self.rootPath,target_path,file_name)  # 连接路径，获取绝对路径
+        
+        target_path=os.path.join(self.rootPath,target_path)
+        if not os.path.exists(target_path):
+            self.request.sendall('no such dir'.encode("utf8"))
+            print("no such dir!")
+            return
+        else:
+            self.request.sendall('ok'.encode("utf8"))
+
+        ##########################################
+        has_received=0
+
+        if os.path.exists(abs_path):      # 判断要上传的文件是否已经存在于FTP
+            file_has_size=os.stat(abs_path).st_size
+            if file_has_size<file_size:
+                # 断点续传
+                self.request.sendall("800".encode("utf8")) # 接收客户端是否需要继续传输
+                choice=self.request.recv(1024).decode("utf8")
+                if choice=="Y":
+                    self.request.sendall(str(file_has_size).encode("utf8"))
+                    has_received+=file_has_size
+                    f=open(abs_path,"ab")  # 打开当前文件，定位在尾端
+                else:
+                    f=open(abs_path,"wb")  # 不续传则，打开文件从文件头开始写，原内容删除
+
+            else:
+                self.request.sendall("801".encode("utf8"))         # 文件完全存在
+                return
+
+        else:
+            self.request.sendall("802".encode("utf8"))
+            f = open(abs_path, "wb")          # 创建新的文件，从头开始写
+
+        while has_received<file_size:    # 文件写入过程
+            try:
+                data=self.request.recv(1024)
+            except Exception:
+                break
+            f.write(data)
+            has_received+=len(data)
+
+        f.close()              
 
     def quit(self,**data): # 客户端对出ftp服务器
         info=self.user+" is quit!"
