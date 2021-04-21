@@ -185,9 +185,9 @@ class ClientHandler():
             "action":"pwd" 
         }
 
-        self.sock.sendall(json.dumps(data).encode("utf-8"))
+        self.sock.sendall(json.dumps(data).encode("utf8"))
 
-        recv_data=self.sock.recv(1024).decode("utf-8")
+        recv_data=self.sock.recv(1024).decode("utf8")
         print(recv_data)
     
     def mkdir(self,*cmd_list):
@@ -199,8 +199,8 @@ class ClientHandler():
             "dirname":cmd_list[1]
         }
 
-        self.sock.sendall(json.dumps(data).encode("utf-8"))
-        recv_data=self.sock.recv(1024).decode("utf-8")
+        self.sock.sendall(json.dumps(data).encode("utf8"))
+        recv_data=self.sock.recv(1024).decode("utf8")
         print(recv_data)
     
     def rm(self,*cmd_list):
@@ -211,8 +211,8 @@ class ClientHandler():
             "action":"rm",
             "file_name":cmd_list[1]
         }
-        self.sock.sendall(json.dumps(data).encode("utf-8"))
-        recv_data=self.sock.recv(1024).decode("utf-8")
+        self.sock.sendall(json.dumps(data).encode("utf8"))
+        recv_data=self.sock.recv(1024).decode("utf8")
         print(recv_data)
     """
     client 端退出
@@ -260,7 +260,7 @@ class ClientHandler():
                 "target_path": target_path
             }
             print("no such file")
-            self.sock.send(json.dumps(data).encode("utf-8"))
+            self.sock.send(json.dumps(data).encode("utf8"))
             return 
         # 获取文件名称以及大小
         file_name=os.path.basename(local_path) 
@@ -273,26 +273,26 @@ class ClientHandler():
             "target_path": target_path
         }
 
-        self.sock.send(json.dumps(data).encode("utf-8"))
+        self.sock.send(json.dumps(data).encode("utf8"))
 
         # 是否存在
-        is_dir_exist=self.sock.recv(1024).decode("utf-8")
+        is_dir_exist=self.sock.recv(1024).decode("utf8")
 
         if is_dir_exist=="no such dir":
             print("no such dir!")
             return 
 
-        is_exist=self.sock.recv(1024).decode("utf-8")
+        is_exist=self.sock.recv(1024).decode("utf8")
 
         has_sent=0
         if is_exist=="800": # 文件不完整
             choice = input("the file exist,but not enough,is continue?[Y/N]").strip()
             if choice.upper()=="Y":
-                self.sock.sendall("Y".encode("utf-8"))
+                self.sock.sendall("Y".encode("utf8"))
                 continue_position = self.sock.recv(1024).decode("utf8")
                 has_sent=int(continue_position)
             else:
-                self.sock.sendall("N".encode("utf-8"))
+                self.sock.sendall("N".encode("utf8"))
         elif is_exist=="801":
             print("the file exist")
             return 
@@ -306,14 +306,93 @@ class ClientHandler():
                     self.sock.sendall(data)
                     has_sent+=len(data)
                     t.update(1024)
-                    time.sleep(0.01)
+                    time.sleep(0.01)  # 可以延缓一下文件上传的速度
                 
         
         if has_sent==file_size:
             print("push success")
             return
 
+    def pull(self,*cmd_list):
+        if len(cmd_list)==1:
+            print("error format!")
+            return 
+        elif len(cmd_list)==2:
+            action,local_path=cmd_list
+            target_path=self.rootPath
+        else:
+            action,local_path,target_path=cmd_list
+            # 文件存放的目标路径
+            target_path=os.path.join(self.rootPath,target_path)
+        
+        if not os.path.exists(target_path):
+            data={
+                "action":"pull",
+                "local_path":local_path,
+                "target_path": "no such dir"
+            }
+            print("no such dir!")
+            self.sock.send(json.dumps(data).encode("utf8"))
+            return 
+        else:
+            data={
+                "action":"pull",
+                "local_path":local_path,
+                "target_path":target_path
+            }
+            self.sock.send(json.dumps(data).encode("utf8"))
+        
+        info=self.sock.recv(1024).decode("utf8")
+        if info=="no such file":
+            print("no such file!")
+            return 
+        
+        file_info=self.sock.recv(1024).strip()
+        file_info=json.loads(file_info.decode("utf8"))
+        print("file_info: ",file_info)
+        file_name=file_info["file_name"]
+        file_size=file_info["file_size"]
 
+        abs_path=os.path.join(self.rootPath,target_path,file_name)
+        # 开始接收
+        has_received=0 
+        print(abs_path)
+        if os.path.exists(abs_path): # 判断要下载的文件是否已经存在于本地
+            file_has_size=os.stat(abs_path).st_size
+            if file_has_size<file_size:
+                # 断点续传
+                self.sock.sendall("800".encode("utf8")) 
+                choice=input("the file exist,but not enough ,is continue?[Y/N]").strip()
+
+                if choice=="Y":
+                    self.sock.sendall("Y".encode("utf8"))
+                    self.sock.sendall(str(file_has_size).encode("utf8"))
+                    has_received+=file_has_size
+                    f=open(abs_path,"ab") # 打开已有的文件，定位至文件末尾
+                else: # "N"
+                    self.sock.sendall("N".encode("utf8"))
+                    # 不续传，打开至文件开头
+                    f=open(abs_path,"wb")
+            else:
+                self.sock.sendall("801".encode("utf8"))
+                print("the file has existed")
+                return  
+        else: # 文件不存在创建文件
+            self.sock.sendall("802".encode("utf8"))
+            f=open(abs_path,"wb")
+        
+        with tqdm(total=file_size,desc="pull") as t:
+            while has_received<file_size:
+                try:
+                    data_new=self.sock.recv(1024)
+                except Exception:
+                    break
+                f.write(data_new)
+                has_received+=len(data_new)
+                t.update(len(data_new))
+        f.close()
+        if has_received==file_size:
+            print("download success!")
 
 
 

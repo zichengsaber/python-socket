@@ -83,7 +83,7 @@ class ServerHandler(socketserver.BaseRequestHandler):
                 self.user=user
                 socket_to_user[self.user]=self.request
                 print(socket_to_user[self.user])
-                self.rootPath=os.path.join(cfg.BASE_DIR,"home",self.user)
+                self.rootPath=os.path.join(cfg.BASE_DIR,"home",self.user) # server/home/zzc
                 print(self.user+" passed authentication")
                 return user
     # chat
@@ -164,14 +164,14 @@ class ServerHandler(socketserver.BaseRequestHandler):
                 os.mkdir(path)
             self.request.sendall("create directory successfully!".encode("utf8"))
         else:
-            self.request.sendall("dirname exist".encode("utf-8"))
+            self.request.sendall("dirname exist".encode("utf8"))
         
     def rm(self,**data):
         file_name=data["file_name"]
         path=os.path.join(self.rootPath,file_name)
         if not os.path.exists(path):
             print("no such file")
-            self.request.sendall("no such file".encode("utf-8"))
+            self.request.sendall("no such file".encode("utf8"))
         else:
             try:
                 shutil.rmtree(path) # 递归删除
@@ -179,7 +179,7 @@ class ServerHandler(socketserver.BaseRequestHandler):
                 os.remove(path) 
             print("delete over!!")
             str_info="remove "+file_name+" success!!!"
-            self.request.sendall(str_info.encode('utf-8'))
+            self.request.sendall(str_info.encode('utf8'))
 
 
     def push(self,**data):
@@ -237,7 +237,58 @@ class ServerHandler(socketserver.BaseRequestHandler):
             f.write(data)
             has_received+=len(data)
 
-        f.close()              
+        f.close()   
+    
+    def pull(self,**data):
+        print("data",data)
+        local_path=data.get("local_path")       # 获取下载文件的服务器的源地址
+        target_path=data.get("target_path")
+
+        local_path = os.path.join(self.rootPath, local_path)     # 得到源文件的绝对路径
+        if not os.path.exists(local_path):
+            self.request.send('no such file'.encode("utf8"))
+            print("no such file!")
+            return
+        else:
+            self.request.send('ok'.encode("utf8"))
+        
+        if target_path=="no such dir":
+            print("no such dir!")
+            return
+
+        file_name = os.path.basename(local_path)  # 获取文件名称及大小
+        file_size = os.stat(local_path).st_size
+
+        file_info={    #发送文件完整路径和大小给客户端
+            "file_name":file_name,
+            "file_size":file_size
+        }
+
+        self.request.send(json.dumps(file_info).encode("utf8"))
+        is_exist = self.request.recv(1024).decode("utf8")
+
+        ############################################
+        has_sent = 0
+        if is_exist == "800":        # 文件存在，但不完整
+            choice=self.request.recv(1024).decode("utf8")
+            if choice== "Y":    # 续传，则更新文件位置到已经发送的末尾
+                continue_position = self.request.recv(1024).decode("utf8")
+                has_sent += int(continue_position)
+            else:   # 不续传
+                return
+
+        elif is_exist == "801":              # 文件完全存在
+            return
+
+        f = open(local_path, "rb")    # 打开文件，只读状态
+        f.seek(has_sent)
+        while has_sent < file_size:
+            data_new = f.read(1024)
+            self.request.sendall(data_new)
+            has_sent += len(data_new)
+
+        f.close()
+
 
     def quit(self,**data): # 客户端对出ftp服务器
         info=self.user+" is quit!"
