@@ -36,13 +36,19 @@
 
 **断点续传**
 传输过程中人为断开网络连接
-<img src="./img/breakpoint.png" style="zoom:90">
+<img src="./img/breakpoint.png" style="zoom:70%">
+
 原文件大小
-<img src="./img/remote.png">
+
+<img src="./img/remote.png" style="zoom:70%">
+
 本地已经下载的大小
-<img src="./img/local.png">
+
+<img src="./img/local.png" style="zoom:70%">
+
 断点续传
-<img src="./img/break(2).png" >
+
+<img src="./img/break(2).png" style="zoom:67%">
 
 
 
