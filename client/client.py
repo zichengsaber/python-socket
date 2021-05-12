@@ -237,6 +237,7 @@ class ClientHandler():
         print("push: to upload things to server")
         print("pull: to download things from server")
         print("quit: to quit the FTP")
+        print("pwd: show the current path")
         print("help: to show this list")
         print("------------------------------------")
         
